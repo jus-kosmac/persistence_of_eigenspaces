@@ -74,23 +74,35 @@ def mapped_points(points, images, distance):
     return mapped_pts
 
 def domain(rips, simp_dict, mapped_pts):
-    mapped_simp = dict() #kljuc: simplex, vrednost: preslikani simplex
+    mapped_simp = dict() #kljuc: simplex, vrednost: (preslikani simplex, signatura, collapse)
     domain_dict = dict() #kljuc: simplex, vrednost: index filtracije domene
     domain_filtration = []
+
+    signature = {(0,):1, (0,1):1, (1,0):-1, (0,1,2):1, (1,0,2):-1, (0,2,1):-1, (1,2,0):1, (2,1,0):-1, (2,0,1):1}
     
     for (index, simp) in rips:
+        image = []
+        collapse = False
 
-        #TODO: dodaj parameter ce se spremeni orientacija
-        image = tuple(sorted(set([mapped_pts[i] for i in simp]))) #SET: ce se slucajno vec oglisc preslika v isto
-        mapped_simp[simp] = image
-        domain_index = max(simp_dict[simp], simp_dict[image])
+        for i in range(len(simp)):
+            if mapped_pts[simp[i]] not in image:
+                image.append(mapped_pts[simp[i]])
+            else:
+                collapse = True
+
+        image = sorted(list(enumerate(image)), key=lambda x: (x[1], x[0]))
+        image_simp = tuple([s for (_, s) in image])
+        permutation = tuple([i for (i, _) in image])
+
+        mapped_simp[simp] = (image_simp, signature[permutation], collapse)
+        domain_index = max(simp_dict[simp], simp_dict[image_simp])
         domain_dict[simp] = domain_index
         domain_filtration.append((domain_index, simp))
         
     return sorted(domain_filtration, key=lambda x: (x[0], len(x[1]), x[1])), mapped_simp, domain_dict
     
 if __name__ == '__main__':
-    points = points_circle_polar(1, 10)
+    points = points_circle_polar(1, 140)
     images = power_polar(points, 2)
     mapped = mapped_points(points, images, distance_polar)
     rips, simp_dict, max_index = rips_complex(points, distance_polar)

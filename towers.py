@@ -1,5 +1,6 @@
-import rips as rips
+import rips
 import sympy as sp
+import copy
 
 
 def add_columns(col1, col2, d, mod):
@@ -84,7 +85,7 @@ def sparse_boundary_matrix(filtration):
 def reduction_sparse_matrix(boundary_matrix, mod):
     m = len(boundary_matrix)
     reduced_matrix = [([], None) for _ in range(m)]
-    #j-ti stolpec (prva koordinata) je stolpec v R, ki ima najbolj spodnji nenicelen element v j-ti vrstici
+    #j-ti element (prva koordinata) je stolpec v R, ki ima najbolj spodnji nenicelen element v j-ti vrstici
     #zapisan je kot padajoc seznam parov (indeks_vrstice, koeficient pri tem simpleksu)
     #vedno poskrbimo, da je najbolj spodnji nenicelen element 1
     #dejansko mesto stolpca je zapisano v drugi koordinati
@@ -127,15 +128,14 @@ def to_dict(column):
     return column_dict
 
 def persistence_intervals(reduced_matrix, zero_columns, columns,
-                          index_to_simp, simp_dict, max_filt_index):
+                          index_to_simp, simp_dict):
     homology_0_intervals = []
     homology_1_intervals = []
 
     #za 1 zamaknjeno nazaj: indeks i pomeni bazo za K_(i+1)
-    homology_0_basis = [[] for _ in range(max_filt_index)]
-    homology_1_basis = [[] for _ in range(max_filt_index)]
-    
-    
+    homology_0_basis = []
+    homology_1_basis = []
+
     for col in zero_columns:
         new_interval = False #True, ce smo ustvarili nov interval
         simp_i = index_to_simp[col]
@@ -155,25 +155,110 @@ def persistence_intervals(reduced_matrix, zero_columns, columns,
             homology_0_intervals.append(interval)
             birth, death = interval
             
-            if death is None: #dodamo nicelni stolpec v bazo (verigo katere boundary je 0)
-                for k in range(birth - 1, max_filt_index):
-                    homology_0_basis[k].append(columns[col])
-            else:
-                for k in range(birth - 1, death): #dodamo nenicelni stolpec (boundary verige v stolpcu)
-                    homology_0_basis[k].append(to_dict(reduced_matrix[col][0]))
+            if death is None: #dodamo nicelni stolpec v bazo (verigo katere boundary je 0) in njegov indeks v reduced_matrix
+                #v tem primeru bo na zapisanem indeksu prazen seznam, ker smo dodali nicelni stolpec v bazo
+                homology_0_basis.append(columns[col])
+            else: #dodamo nenicelni stolpec (boundary verige v stolpcu)
+                homology_0_basis.append(to_dict(reduced_matrix[col][0]))
                     
         if new_interval and len(simp_i) == 2:
             homology_1_intervals.append(interval)
             birth, death = interval
             
             if death is None:
-                for k in range(birth - 1, max_filt_index):
-                    homology_1_basis[k].append(columns[col])
+                homology_1_basis.append(columns[col])
             else:
-                for k in range(birth - 1, death):
-                    homology_1_basis[k].append(to_dict(reduced_matrix[col][0]))
+                homology_1_basis.append(to_dict(reduced_matrix[col][0]))
             
     return homology_0_intervals, homology_1_intervals, homology_0_basis, homology_1_basis
+
+def filtration_basis(intervals, basis, max_filt_index):
+    filt_basis = [[] for _ in range(max_filt_index)]
+
+    for x in range(len(intervals)):
+        birth, death = intervals[x]
+        if death is None:
+            for k in range(birth - 1, max_filt_index):
+                filt_basis[k].append(basis[x])
+        else:
+            for k in range(birth - 1, death):
+                filt_basis[k].append(basis[x])
+
+    return filt_basis
+
+def mapped_basis(dom_basis, dom_index_to_simp, simp_to_index, mod, mapped_simp = False):
+    mapped_basis = []
+    if mapped_simp == False: #gledamo inkluzijo
+        for cycle in dom_basis:
+            mapped_cycle = dict()
+
+            for index in cycle: #pogledamo kateri index ustreza temu simpleksu v celotni filtraciji
+                simp = dom_index_to_simp[index]
+                mapped_index = simp_to_index[simp]
+                mapped_cycle[mapped_index] = cycle[index]
+
+            mapped_basis.append(mapped_cycle)
+
+    else: #mapped_simp je slovar preslikanih simpleksev
+        for cycle in dom_basis:
+            mapped_cycle = dict()
+
+            for index in cycle:
+                simp = dom_index_to_simp[index]
+                image_simp, signature, collapse = mapped_simp[simp]
+
+                if not collapse:
+                    mapped_index = simp_to_index[image_simp]
+                    if mapped_index not in mapped_cycle:
+                        mapped_cycle[mapped_index] = (cycle[index] * signature) % mod
+                    else:
+                        value = (mapped_cycle[mapped_index] + cycle[index] * signature) % mod
+                        if value != 0:
+                            mapped_cycle[mapped_index] = value
+                        else:
+                            del mapped_cycle[mapped_index]
+
+
+            mapped_basis.append(mapped_cycle)
+
+    return mapped_basis
+
+def to_list(column):
+    return [(index, column[index]) for index in sorted(column, reverse=True)]
+
+
+def basis_coefficients(map_basis, basis, reduced_matrix, mod):
+    coefficients = [[0 for _ in range(len(basis))] for _ in range(len(map_basis))]
+
+    #uredimo cikle spet po padajocem indeksu simpleksov
+    map_basis = [to_list(b) for b in map_basis]
+    basis = [to_list(b) for b in basis]
+
+    #dodamo v matriko tiste bazne elemente, ki pridejo od intervalov z death = None
+    #na najnizjem mestu bodo imeli 1 in sicer bo to ravno na diagonali
+    alt_reduced_matrix = copy.deepcopy(reduced_matrix)
+    for cycle in basis:
+        if len(alt_reduced_matrix[cycle[0][0]][0]) == 0:
+            alt_reduced_matrix[cycle[0][0]] = (cycle, cycle[0][0])
+
+    for i in range(len(map_basis)):
+        cycle = map_basis[i]
+        coeffs = dict()
+        while len(cycle) > 0:
+            #vsak stolpec bo najvec enkrat na vrsti ker se indeks najbolj spodnjega nenicelnega strogo manjsa
+            assert len(alt_reduced_matrix[cycle[0][0]][0]) > 0
+            coeffs[alt_reduced_matrix[cycle[0][0]][1]] = cycle[0][1]
+            cycle = add_columns(cycle, alt_reduced_matrix[cycle[0][0]][0], - cycle[0][1], mod)
+
+        for j in range(len(basis)):
+            col = alt_reduced_matrix[basis[j][0][0]][1]
+            if col in coeffs:
+                coefficients[i][j] = coeffs[col]
+
+    return coefficients
+
+
+
 
 def print_sparse(matrix):
     m = len(matrix)
@@ -204,6 +289,7 @@ def print_sparse1(matrix):
         print(line)
     
 if __name__ == '__main__':
+
 ##    test_filtracija = [(1, (1,)), (2, (2,)), (3, (3,)), (4, (1, 2)),
 ##                       (5, (2, 3)), (6, (1, 3)), (7, (1, 2, 3))]
 ##    dict1 = {0:(1,), 1:(2,), 2:(3,), 3:(1,2), 4:(2,3), 5:(1,3), 6:(1,2,3)}
@@ -224,7 +310,7 @@ if __name__ == '__main__':
 ##    hh0, hh1, hh0b, hh1b = persistence_intervals(rm1, zero1, cols1, dict3, dict4, 6)
 
     
-    points = rips.points_circle_polar(1, 25, 0.2)
+    points = rips.points_circle_polar(1, 50, 0.2)
     images = rips.power_polar(points, 2)
     mapped = rips.mapped_points(points, images, rips.distance_polar)
     
@@ -235,11 +321,28 @@ if __name__ == '__main__':
     boundary_matrix, simp_to_index, index_to_simp = sparse_boundary_matrix(rips_comp)
     reduced_matrix, zero_columns, columns = reduction_sparse_matrix(boundary_matrix, 29)
     hom0, hom1, hom0_basis, hom1_basis = persistence_intervals(reduced_matrix, zero_columns, columns,
-                                       index_to_simp, simp_dict, max_filt_index)
+                                                               index_to_simp, simp_dict)
+    hom0_filt_basis = filtration_basis(hom0, hom0_basis, max_filt_index)
+    hom1_filt_basis = filtration_basis(hom1, hom1_basis, max_filt_index)
 
     #za dom_i
     dom_boundary_matrix, dom_simp_to_index, dom_index_to_simp = sparse_boundary_matrix(domain_filt)
     dom_reduced_matrix, dom_zero_columns, dom_columns = reduction_sparse_matrix(dom_boundary_matrix, 29)
-    dom_hom0, dom_hom1, dom_hom0_basis, dom_hom1_basis = persistence_intervals(dom_reduced_matrix, dom_zero_columns, dom_columns, dom_index_to_simp, domain_dict, max_filt_index)
+    dom_hom0, dom_hom1, dom_hom0_basis, dom_hom1_basis = \
+        persistence_intervals(dom_reduced_matrix, dom_zero_columns, dom_columns, dom_index_to_simp, domain_dict)
+    dom_hom0_filt_basis = filtration_basis(dom_hom0, dom_hom0_basis, max_filt_index)
+    dom_hom1_filt_basis = filtration_basis(dom_hom1, dom_hom1_basis, max_filt_index)
+
+    #preslikamo bazo
+    inclusion_basis0 = mapped_basis(dom_hom0_basis, dom_index_to_simp, simp_to_index, 29)
+    inclusion_basis1 = mapped_basis(dom_hom1_basis, dom_index_to_simp, simp_to_index, 29)
+    mapped_basis0 = mapped_basis(dom_hom0_basis, dom_index_to_simp, simp_to_index, 29, mapped_simp)
+    mapped_basis1 = mapped_basis(dom_hom1_basis, dom_index_to_simp, simp_to_index, 29, mapped_simp)
+
+    #razvijemo preslikano bazo po originalni bazi
+    inclusion_coeffs0 = basis_coefficients(inclusion_basis0, hom0_basis, reduced_matrix, 29)
+    inclusion_coeffs1 = basis_coefficients(inclusion_basis1, hom1_basis, reduced_matrix, 29)
+    mapped_coeffs0 = basis_coefficients(mapped_basis0, hom0_basis, reduced_matrix, 29)
+    mapped_coeffs1 = basis_coefficients(mapped_basis1, hom1_basis, reduced_matrix, 29)
     
 
