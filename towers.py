@@ -172,17 +172,18 @@ def persistence_intervals(reduced_matrix, zero_columns, columns,
             
     return homology_0_intervals, homology_1_intervals, homology_0_basis, homology_1_basis
 
-def filtration_basis(intervals, basis, max_filt_index):
+def filtration_basis(intervals, max_filt_index):
     filt_basis = [[] for _ in range(max_filt_index)]
+    #v i-tem seznamcku so indeksi baznih elementov, ki tvorijo bazo pri i-ti filtraciji
 
     for x in range(len(intervals)):
         birth, death = intervals[x]
         if death is None:
             for k in range(birth - 1, max_filt_index):
-                filt_basis[k].append(basis[x])
+                filt_basis[k].append(x)
         else:
             for k in range(birth - 1, death):
-                filt_basis[k].append(basis[x])
+                filt_basis[k].append(x)
 
     return filt_basis
 
@@ -257,7 +258,22 @@ def basis_coefficients(map_basis, basis, reduced_matrix, mod):
 
     return coefficients
 
+def tower_of_pairs(dom_filt_basis, filt_basis, coeffs, max_filt_index):
+    tower = [None for _ in range(max_filt_index)]
+    #hrani matrike preslikav med stolpoma
 
+    for ind in range(max_filt_index):
+        dom_basis = dom_filt_basis[ind]
+        basis = filt_basis[ind]
+        matrix = [[None for _ in range(len(dom_basis))] for _ in range(len(basis))]
+
+        for i in range(len(basis)):
+            for j in range(len(dom_basis)):
+                matrix[i][j] = coeffs[dom_basis[j]][basis[i]]
+
+        tower[ind] = matrix
+
+    return tower
 
 
 def print_sparse(matrix):
@@ -310,8 +326,8 @@ if __name__ == '__main__':
 ##    hh0, hh1, hh0b, hh1b = persistence_intervals(rm1, zero1, cols1, dict3, dict4, 6)
 
     
-    points = rips.points_circle_polar(1, 50, 0.2)
-    images = rips.power_polar(points, 2)
+    points = rips.points_circle_polar(1, 50, 0.05)
+    images = rips.power_polar(points, 3)
     mapped = rips.mapped_points(points, images, rips.distance_polar)
     
     rips_comp, simp_dict, max_filt_index = rips.rips_complex(points, rips.distance_polar)
@@ -322,16 +338,16 @@ if __name__ == '__main__':
     reduced_matrix, zero_columns, columns = reduction_sparse_matrix(boundary_matrix, 29)
     hom0, hom1, hom0_basis, hom1_basis = persistence_intervals(reduced_matrix, zero_columns, columns,
                                                                index_to_simp, simp_dict)
-    hom0_filt_basis = filtration_basis(hom0, hom0_basis, max_filt_index)
-    hom1_filt_basis = filtration_basis(hom1, hom1_basis, max_filt_index)
+    hom0_filt_basis = filtration_basis(hom0, max_filt_index)
+    hom1_filt_basis = filtration_basis(hom1, max_filt_index)
 
     #za dom_i
     dom_boundary_matrix, dom_simp_to_index, dom_index_to_simp = sparse_boundary_matrix(domain_filt)
     dom_reduced_matrix, dom_zero_columns, dom_columns = reduction_sparse_matrix(dom_boundary_matrix, 29)
     dom_hom0, dom_hom1, dom_hom0_basis, dom_hom1_basis = \
         persistence_intervals(dom_reduced_matrix, dom_zero_columns, dom_columns, dom_index_to_simp, domain_dict)
-    dom_hom0_filt_basis = filtration_basis(dom_hom0, dom_hom0_basis, max_filt_index)
-    dom_hom1_filt_basis = filtration_basis(dom_hom1, dom_hom1_basis, max_filt_index)
+    dom_hom0_filt_basis = filtration_basis(dom_hom0, max_filt_index)
+    dom_hom1_filt_basis = filtration_basis(dom_hom1, max_filt_index)
 
     #preslikamo bazo
     inclusion_basis0 = mapped_basis(dom_hom0_basis, dom_index_to_simp, simp_to_index, 29)
@@ -344,5 +360,11 @@ if __name__ == '__main__':
     inclusion_coeffs1 = basis_coefficients(inclusion_basis1, hom1_basis, reduced_matrix, 29)
     mapped_coeffs0 = basis_coefficients(mapped_basis0, hom0_basis, reduced_matrix, 29)
     mapped_coeffs1 = basis_coefficients(mapped_basis1, hom1_basis, reduced_matrix, 29)
+
+    #naredimo osnovna stolpa
+    inclusion_tower0 = tower_of_pairs(dom_hom0_filt_basis, hom0_filt_basis, inclusion_coeffs0, max_filt_index)
+    inclusion_tower1 = tower_of_pairs(dom_hom1_filt_basis, hom1_filt_basis, inclusion_coeffs1, max_filt_index)
+    mapped_tower0 = tower_of_pairs(dom_hom0_filt_basis, hom0_filt_basis, mapped_coeffs0, max_filt_index)
+    mapped_tower1 = tower_of_pairs(dom_hom1_filt_basis, hom1_filt_basis, mapped_coeffs1, max_filt_index)
     
 
