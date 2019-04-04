@@ -24,7 +24,30 @@ def distance_polar(a, b):
     return distance(x, y)
 
 def distance(a, b):
-    return (a[0] - b[0])**2 + (a[1] - b[1])**2
+    dist = 0
+    for i in range(len(a)):
+        dist += (a[i] - b[i]) ** 2
+    return dist
+
+def points_torus_polar(R, r, N, n, sigma = 0):
+    points = []
+    for i in range(N):
+        for j in range(n):
+            big = max(R + np.random.normal(0, sigma), 0)
+            small = min(max(r + np.random.normal(0, sigma), 0), big)
+            points.append((big, small, 2 * m.pi * i / N + np.random.normal(0, sigma),
+                           2 * m.pi * j / n + np.random.normal(0, sigma)))
+
+    return points
+
+def rotate_torus_polar(points, eksp_big, eksp_small):
+    return [(R, r, fi * eksp_big, theta * eksp_small) for (R, r, fi, theta) in points]
+
+def distance_torus_polar(a, b):
+    x = ((a[0] + a[1] * m.cos(a[3])) * m.cos(a[2]), (a[0] + a[1] * m.cos(a[3])) * m.sin(a[2]), a[1] * m.sin(a[3]))
+    y = ((b[0] + b[1] * m.cos(b[3])) * m.cos(b[2]), (b[0] + b[1] * m.cos(b[3])) * m.sin(b[2]), b[1] * m.sin(b[3]))
+    return distance(x, y)
+
 
 def rips_complex(points, distance):
     n = len(points)
@@ -102,8 +125,8 @@ def domain(rips, simp_dict, mapped_pts):
     return sorted(domain_filtration, key=lambda x: (x[0], len(x[1]), x[1])), mapped_simp, domain_dict
     
 if __name__ == '__main__':
-    points = points_circle_polar(1, 140)
-    images = power_polar(points, 2)
-    mapped = mapped_points(points, images, distance_polar)
-    rips, simp_dict, max_index = rips_complex(points, distance_polar)
+    points = points_torus_polar(2, 1, 15, 8, 0.1)
+    images = rotate_torus_polar(points, 3, 2)
+    mapped = mapped_points(points, images, distance_torus_polar)
+    rips, simp_dict, max_index = rips_complex(points, distance_torus_polar)
     domain_filt, mapped_simp, domain_dict = domain(rips, simp_dict, mapped)
