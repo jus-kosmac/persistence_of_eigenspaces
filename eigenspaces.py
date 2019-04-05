@@ -190,6 +190,8 @@ def eigenspace_tower(inclusion_tower, mapped_tower, domain_filt_basis, max_filt_
     # seznam tuplov oblike (basis list glede na top nenicelni index, indeksi kjer so bazni elementi kvocienta)
     # ce je nicelen prostor je vrednost None
     eigen_tower_basis = [None for _ in range(max_filt_index)]
+    # bazni vektorji za kvocient, koeficienti pripadajo baznim vektorjem v domain_filt_basis
+    eigen_tower_quotient_basis = [[] for _ in range(max_filt_index)]
     # matrike, ki tvorijo stolp
     # ce je preslikava iz nicelnega ali v nicelni prostor je vrednost None
     eigen_tower = [None for _ in range(max_filt_index - 1)]
@@ -229,14 +231,20 @@ def eigenspace_tower(inclusion_tower, mapped_tower, domain_filt_basis, max_filt_
             basis_list, quotient_basis = complete_basis(intersect_basis, eigen_space_basis, mod)
             eigen_tower_basis[i] = (basis_list, quotient_basis)
 
+            for index in quotient_basis:
+                eigen_tower_quotient_basis[i].append(basis_list[index][0])
+
     for i in range(max_filt_index - 1):
-        if eigen_tower_basis[i] is None or eigen_tower_basis[i + 1] is None:
+        if eigen_tower_basis[i] is None or eigen_tower_basis[i + 1] is None: #celoten prostor je trivialen
             continue
         else:
             indices_list_first, basis_first = eigen_tower_basis[i]
             indices_list_second, basis_second = eigen_tower_basis[i + 1]
             m = len(basis_second)
             n = len(basis_first)
+            if n == 0 or m == 0: #kvocient je trivialen
+                continue
+
             eigen_matrix = [[None for _ in range(n)] for _ in range(m)] #m x n matrika
 
             for j in range(n):
@@ -249,11 +257,101 @@ def eigenspace_tower(inclusion_tower, mapped_tower, domain_filt_basis, max_filt_
 
             eigen_tower[i] = eigen_matrix
 
-    return eigen_tower
+    return eigen_tower, eigen_tower_quotient_basis
+
+def tower_normal_form(tower, tower_basis, max_filt_index, mod):
+    #SPREMINJA TOWER IN TOWER_BASIS!
+    for ind in range(max_filt_index - 2, -1, -1):
+        right = tower[ind] #m x n matrix
+        if right is None: #slikamo v prazen prostor ali iz praznega prostora
+            continue
+
+        basis = tower_basis[ind] #baza domene right in kodomene left
+        left = None #ce nimamo leve matrike ali pa je levi prostor niceln
+        if ind > 0: #imamo se levo matriko
+            left = tower[ind - 1]
+
+        m = len(right)
+        n = len(basis)
+        pivot = 0 #trenutni stolpec
+
+        for i in range(m):
+            column = pivot #bo postal stolpec, ki ima nenicelni element v tej vrstici
+            while column < n and right[i][column] % mod == 0:
+                column += 1
+            if column == n: #nicelna vrstica
+                continue
+
+            #zamenjamo stolpca
+            basis[pivot], basis[column] = basis[column], basis[pivot]
+            for row in range(m):
+                right[row][pivot], right[row][column] = right[row][column], right[row][pivot]
+            #zamenjamo vrstici
+            if left is not None:
+                left[pivot], left[column] = left[column], left[pivot]
+
+            #pivotni element nastavimo na 1 in popravimo bazo ter obe matriki
+            pivot_el = right[i][pivot]
+            inv = sp.mod_inverse(pivot_el, mod)
+            for row in range(i, m):
+                right[row][pivot] = (right[row][pivot] * inv) % mod
+            for k in range(len(basis[pivot])):
+                basis[pivot][k] = (basis[pivot][k] * inv) % mod
+            if left is not None:
+                for k in range(len(left[pivot])):
+                    left[pivot][k] = (left[pivot][k] * pivot_el) % mod
+
+            #eliminiramo ostale elemente v vrstici in popravimo matrike
+            for j in range(pivot + 1, n):
+                coeff = right[i][j]
+                for row in range(i, m):
+                    right[row][j] = (right[row][j] - coeff * right[row][pivot]) % mod
+                for k in range(len(basis[j])):
+                    basis[j][k] = (basis[j][k] - coeff * basis[pivot][k]) % mod
+                if left is not None:
+                    for k in range(len(left[pivot])):
+                        left[pivot][k] = (left[pivot][k] + coeff * left[j][k]) % mod
+
+            pivot += 1
+
+    for ind in range(max_filt_index - 1):
+        left = tower[ind] #m x n matrika
+        if left is None:
+            continue
+
+        basis = tower_basis[ind + 1]
+        right = None
+        if ind < max_filt_index - 2:
+            right = tower[ind + 1]
+
+        m = len(left)
+        n = len(left[0])
+        pivot = 0 #indeks vrstice, kjer je trenutno pivotni element
+
+        for i in range(n):
+            while pivot < m and left[pivot][i] % mod == 0:
+                pivot += 1
+            if pivot == m: #vse vrstice smo ze unicili
+                break
+
+            #eliminiramo ostale elemente v stolpcu in popravimo matrike
+            for j in range(pivot + 1, m):
+                coeff = left[j][i]
+                left[j][i] = 0
+                for k in range(len(basis[pivot])):
+                    basis[pivot][k] = (basis[pivot][k] + coeff * basis[j][k]) % mod
+                if right is not None:
+                    for k in range(len(right)):
+                        right[k][pivot] = (right[k][pivot] + coeff * right[k][j]) % mod
+
+def tower_persistence(tower, tower_basis, max_filt_index, mod):
+    pass
 
 
-#TODO: zakaj pridejo matrike [] pri eigenspace_tower?
 
+#TODO: compute persistence from tower
+#TODO: compute corresponding eigenvectors
+#TODO: visualize (plot) eigenvectors
 
 if __name__ == '__main__':
 
@@ -262,4 +360,7 @@ if __name__ == '__main__':
 
     U = [[1, 0, 0], [0, 1, 0], [0, 0, 3]]
     V = [[2, 1, 0], [0, 0, 1]]
+
+    tower = [[[4, 2, 3], [4, 1, 3], [5, 6, 10]], [[1, 3, 1], [4, 6, 10]], [[2, 7]]]
+    tower_basis = [[[1], [2], [1]], [[4, 3], [3, 5], [2, 1]], [[1], [6]], [[1, 2, 0, 1, 4]]]
 

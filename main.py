@@ -8,8 +8,8 @@ import eigenspaces
 mod = 29
 
 # generiramo tocke in ripsov kompleks
-points = rips.points_circle_polar(1, 50, 0.1)
-images = rips.power_polar(points, 3)
+points = rips.points_circle_polar(1, 50, 0.03)
+images = rips.power_polar(points, 2)
 mapped = rips.mapped_points(points, images, rips.distance_polar)
 
 rips_comp, simp_dict, max_filt_index = rips.rips_complex(points, rips.distance_polar)
@@ -50,7 +50,9 @@ mapped_tower0 = towers.tower_of_pairs(dom_hom0_filt_basis, hom0_filt_basis, mapp
 mapped_tower1 = towers.tower_of_pairs(dom_hom1_filt_basis, hom1_filt_basis, mapped_coeffs1, max_filt_index)
 
 # eigenspace tower
-eigen_tower0 = eigenspaces.eigenspace_tower(inclusion_tower0, mapped_tower0, dom_hom0_filt_basis,
-                                            max_filt_index, 3, mod)
-eigen_tower1 = eigenspaces.eigenspace_tower(inclusion_tower1, mapped_tower1, dom_hom1_filt_basis,
-                                            max_filt_index, 3, mod)
+eigen_tower0, eigen_tower_basis0 = eigenspaces.eigenspace_tower(inclusion_tower0, mapped_tower0, dom_hom0_filt_basis,
+                                                                max_filt_index, 2, mod)
+eigen_tower1, eigen_tower_basis1 = eigenspaces.eigenspace_tower(inclusion_tower1, mapped_tower1, dom_hom1_filt_basis,
+                                                                max_filt_index, 3, mod)
+eigenspaces.tower_normal_form(eigen_tower0, eigen_tower_basis0, max_filt_index, mod)
+eigenspaces.tower_normal_form(eigen_tower1, eigen_tower_basis1, max_filt_index, mod)
