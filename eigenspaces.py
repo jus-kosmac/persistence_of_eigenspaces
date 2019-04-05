@@ -81,11 +81,11 @@ def vect_mult(A, vect, mod):
     return C
 
 def mat_sum(A, B, t, mod):
-    #vrne A + t * B, obe velikosti m x n NEPRAZNI!
+    #vrne A - t * B, obe velikosti m x n NEPRAZNI!
     m = len(A)
     n = len(A[0])
 
-    return [[(A[i][j] + t * B[i][j]) % mod for j in range(n)] for i in range(m)]
+    return [[(A[i][j] - t * B[i][j]) % mod for j in range(n)] for i in range(m)]
 
 def intersection(A, B, mod):
     #A in B sta BAZI za 2 podprostora, predstavljeni kot seznam vrstic (vektorjev) NEPRAZNI!
@@ -140,32 +140,119 @@ def reduce_vect(top_list, vect, mod):
 
     return vect, top, coeffs
 
-def complete_basis(A, B, mod, empty = False):
+def complete_basis(A, B, mod):
     #A je podprostor B, dopolni bazo za A (jo popravi do spodnje trikotne) do baze za B
     #pri tem skrbi, da je baza vedno spodaj trikotna, da bomo lazje razvijali po tej bazi kasneje
-    #empty pove, ce je slucajno A trivialen podprostor, B NEPRAZEN!
+    #B NEPRAZEN!
     p = len(B[0])
     #na indeksu i je bazni vektor, ki ima na i-tem mestu od zgoraj prvi nenicelni element
     top_non_zero = [([], None) for _ in range(p)]
     quotient_basis = [] #indeksi, na katerih so elementi, ki smo jih dobili iz B
 
-    if not empty:
-        for vect in A:
-            vect_reduced, top, _ = reduce_vect(top_non_zero, vect, mod)
-            if top is not None: #se ni zreduciral do nicelnega vektorja
-                top_non_zero[top] = (vect_reduced, 'A')
+    for vect in A:
+        vect_reduced, top, _ = reduce_vect(top_non_zero, vect, mod)
+        if top is not None: #se ni zreduciral do nicelnega vektorja
+            top_non_zero[top] = (vect_reduced, 'intersection')
 
     for i in range(len(B)):
         vect_reduced, top, _ = reduce_vect(top_non_zero, B[i], mod)
         if top is not None:
-            top_non_zero[top] = (vect_reduced, 'B')
+            top_non_zero[top] = (vect_reduced, 'eigenspace')
             quotient_basis.append(top)
 
     return top_non_zero, quotient_basis
 
 def quotient_coeffs(top_list, quotient_basis, vect, mod):
     _, _, coeffs = reduce_vect(top_list, vect, mod)
-    return [coeffs[i] for i in quotient_basis]
+    return [coeffs[i] if i in coeffs else 0 for i in quotient_basis]
+
+def basis_conversion(vect_one, basis_one, basis_two):
+    # basis_two ima vedno dodane le vecje indekse od basis_one, vsi indeksi so urejeni
+    n = len(basis_one)
+    m = len(basis_two)
+    vect_two = [0 for _ in range(m)]
+
+    j = 0
+    for i in range(m):
+        current = basis_two[i]
+        while j < n and basis_one[j] < current:
+            j += 1
+
+        if j == n:
+            break
+        elif basis_one[j] == current:
+            vect_two[i] = vect_one[j]
+
+    return vect_two
+
+
+def eigenspace_tower(inclusion_tower, mapped_tower, domain_filt_basis, max_filt_index, eigenvalue, mod):
+    # seznam tuplov oblike (basis list glede na top nenicelni index, indeksi kjer so bazni elementi kvocienta)
+    # ce je nicelen prostor je vrednost None
+    eigen_tower_basis = [None for _ in range(max_filt_index)]
+    # matrike, ki tvorijo stolp
+    # ce je preslikava iz nicelnega ali v nicelni prostor je vrednost None
+    eigen_tower = [None for _ in range(max_filt_index - 1)]
+
+    for i in range(max_filt_index):
+        A = mapped_tower[i]
+        B = inclusion_tower[i]
+
+        if len(A) == 0: #homologija K_i ima dimenzijo 0
+            dim = len(domain_filt_basis[i]) #dimenzija homologije dom_i
+            if dim == 0: #trivialen vektorski prostor = ni baze
+                continue
+            else: #vsi bazni elementi so v preseku jeder
+                top_non_zero = [([], None) for _ in range(dim)]
+                for d in range(dim):
+                    vect = [0 for _ in range(dim)]
+                    vect[d] = 1
+                    top_non_zero[d] = (vect, 'intersection')
+
+                eigen_tower_basis[i] = (top_non_zero, [])
+        elif len(A[0]) == 0: #nicelen prostor
+            continue
+        else:
+            C = mat_sum(A, B, eigenvalue, mod)
+            eigen_space_basis = kernel_basis(C, mod)
+            if len(eigen_space_basis) == 0:
+                continue
+
+            ker_basisA = kernel_basis(A, mod)
+            ker_basisB = kernel_basis(B, mod)
+
+            if len(ker_basisA) == 0 or len(ker_basisB) == 0:
+                intersect_basis = []
+            else:
+                intersect_basis = intersection(ker_basisA, ker_basisB, mod)
+
+            basis_list, quotient_basis = complete_basis(intersect_basis, eigen_space_basis, mod)
+            eigen_tower_basis[i] = (basis_list, quotient_basis)
+
+    for i in range(max_filt_index - 1):
+        if eigen_tower_basis[i] is None or eigen_tower_basis[i + 1] is None:
+            continue
+        else:
+            indices_list_first, basis_first = eigen_tower_basis[i]
+            indices_list_second, basis_second = eigen_tower_basis[i + 1]
+            m = len(basis_second)
+            n = len(basis_first)
+            eigen_matrix = [[None for _ in range(n)] for _ in range(m)] #m x n matrika
+
+            for j in range(n):
+                vect_first = indices_list_first[basis_first[j]][0] #koeficienti po prvotni bazi celega prostora
+                vect_second = basis_conversion(vect_first, domain_filt_basis[i], domain_filt_basis[i + 1])
+                coeffs = quotient_coeffs(indices_list_second, basis_second, vect_second, mod)
+
+                for k in range(m):
+                    eigen_matrix[k][j] = coeffs[k]
+
+            eigen_tower[i] = eigen_matrix
+
+    return eigen_tower
+
+
+#TODO: zakaj pridejo matrike [] pri eigenspace_tower?
 
 
 if __name__ == '__main__':
