@@ -50,6 +50,42 @@ def distance_torus_polar(a, b):
     y = ((b[0] + b[1] * m.cos(b[3])) * m.cos(b[2]), (b[0] + b[1] * m.cos(b[3])) * m.sin(b[2]), b[1] * m.sin(b[3]))
     return distance(x, y)
 
+def points_circles_polar(radii, centres, numbers, sigmas = None):
+    #vsi parametri so seznami enakih dolzin
+    points = []
+    for i in range(len(radii)):
+        R = radii[i]
+        c = centres[i]
+        n = numbers[i]
+        sig = 0 if sigmas is None else sigmas[i]
+        for j in range(n):
+            points.append((c, max(R + np.random.normal(0, sig), 0), 2 * m.pi * j / n + np.random.normal(0, sig)))
+
+    return points
+
+def rotate_circles_polar(points, factors, numbers):
+    #number in factor sta seznama enake dolzine, povemo koliko tock zavrtimo za posamezni faktor
+    #skupna vsota stevil v seznamu number mora biti ravno dolzina seznama points
+    rotated_points = [None for _ in range(len(points))]
+    index_correction = 0
+    for i in range(len(numbers)):
+        n = numbers[i]
+        factor = factors[i]
+        for j in range(n):
+            c, R, fi = points[index_correction + j]
+            rotated_points[index_correction + j] = (c, R, factor * fi)
+
+        index_correction += n
+
+    return rotated_points
+
+def distance_circles_polar(a, b):
+    (x1, y1), r1, fi1 = a
+    (x2, y2), r2, fi2 = b
+    first = (x1 + r1 * m.cos(fi1), y1 + r1 * m.sin(fi1))
+    second = (x2 + r2 * m.cos(fi2), y2 + r2 * m.sin(fi2))
+    return distance(first, second)
+
 
 def rips_complex(points, distance):
     n = len(points)
@@ -127,20 +163,59 @@ def domain(rips, simp_dict, mapped_pts):
     return sorted(domain_filtration, key=lambda x: (x[0], len(x[1]), x[1])), mapped_simp, domain_dict
 
 def visualize_circle_polar(points, images, cycles = False):
+    points_x, points_y = [], []
+    images_x, images_y = [], []
+
+    for r, fi in points:
+        points_x.append(r * m.cos(fi))
+        points_y.append(r * m.sin(fi))
+
+    for r, fi in images:
+        images_x.append(r * m.cos(fi))
+        images_y.append(r * m.sin(fi))
+
+    # x_min, y_min = min(points_x + images_x), min(points_y + images_y)
+    # x_max, y_max = max(points_x + images_x), max(points_y + images_y)
+    #
+    # factor = 1.2
+    # lower = factor * min(x_min, y_min)
+    # upper = factor * max(x_max, y_max)
+    #
+    # plt.xlim(lower, upper)
+    # plt.ylim(lower, upper)
+    plt.axes().set_aspect('equal')
+    # plt.axis('equal')
+
     if cycles is not False: #cycles je seznam ciklov v prvi homologiji
         for cycle in cycles:
             for start, end in cycle:
-                r1, fi1 = points[start]
-                r2, fi2 = points[end]
-                plt.plot([r1 * m.cos(fi1), r2 * m.cos(fi2)], [r1 * m.sin(fi1), r2 * m.sin(fi2)], c='g')
+                plt.plot([points_x[start], points_x[end]], [points_y[start], points_y[end]], c='g')
 
-    for r, fi in points:
-        plt.scatter(x=r * m.cos(fi), y=r * m.sin(fi), c='b')
+    plt.scatter(points_x, points_y, c='b')
+    plt.scatter(images_x, images_y, c='r')
 
-    for r, fi in images:
-        plt.scatter(x=r * m.cos(fi), y=r * m.sin(fi), c='r')
+def visualize_circles_polar(points, images, cycles = False):
+    points_x, points_y = [], []
+    images_x, images_y = [], []
 
-    #TODO: popravi razmerje osi
+    for (a, b), r, fi in points:
+        points_x.append(a + r * m.cos(fi))
+        points_y.append(b + r * m.sin(fi))
+
+    for (a, b), r, fi in images:
+        images_x.append(a + r * m.cos(fi))
+        images_y.append(b + r * m.sin(fi))
+
+    plt.axes().set_aspect('equal')
+
+    if cycles is not False: #cycles je seznam ciklov v prvi homologiji
+        for cycle in cycles:
+            for start, end in cycle: #zacetek in konec 1-simpleksa, ki tvori cikel
+                plt.plot([points_x[start], points_x[end]], [points_y[start], points_y[end]], c='g')
+
+    plt.scatter(points_x, points_y, c='b')
+    plt.scatter(images_x, images_y, c='r')
+
 
 def visualize_torus_polar(points, images, cycles = False):
     points_x, points_y, points_z = [], [], []
@@ -178,17 +253,14 @@ def visualize_torus_polar(points, images, cycles = False):
     ax.scatter(images_x, images_y, images_z, c='r')
 
 
-#TODO: dva kroga v ravnini, vsakega lahko po svoje sucemo
-
-
     
 if __name__ == '__main__':
-    points = points_torus_polar(4, 1.5, 15, 8, 0.03)
-    images = rotate_torus_polar(points, 3, 2)
-    mapped = mapped_points(points, images, distance_torus_polar)
-    rips, simp_dict, max_index = rips_complex(points, distance_torus_polar)
+    points = points_circles_polar([1, 3, 2], [(-5, 0), (2, 2), (3, 4)], [20, 40, 30], [0.03, 0.1, 0.03])
+    images = rotate_circles_polar(points, [2, -1, 3], [20, 40, 30])
+    mapped = mapped_points(points, images, distance_circles_polar)
+    rips, simp_dict, max_index = rips_complex(points, distance_circles_polar)
     domain_filt, mapped_simp, domain_dict = domain(rips, simp_dict, mapped)
 
     # plotting
-    cycle = {(1, 10): 1, (10, 100): 1, (40, 80): 1}
-    visualize_torus_polar(points, images, [cycle])
+    cycle = {(1, 10): 1, (10, 50): 1, (40, 80): 1}
+    visualize_circles_polar(points, images, [cycle])

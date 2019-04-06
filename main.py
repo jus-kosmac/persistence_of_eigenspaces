@@ -8,11 +8,11 @@ import eigenspaces
 mod = 29
 
 # generiramo tocke in ripsov kompleks
-points = rips.points_circle_polar(1, 50, 0.03)
-images = rips.power_polar(points, 2)
-mapped = rips.mapped_points(points, images, rips.distance_polar)
+points = rips.points_circles_polar([2, 2], [(-0.5, 0), (0.5, 0)], [40, 40], [0.03, 0.03])
+images = rips.rotate_circles_polar(points, [3, 2], [40, 40])
+mapped = rips.mapped_points(points, images, rips.distance_circles_polar)
 
-rips_comp, simp_dict, max_filt_index = rips.rips_complex(points, rips.distance_polar)
+rips_comp, simp_dict, max_filt_index = rips.rips_complex(points, rips.distance_circles_polar)
 domain_filt, mapped_simp, domain_dict = rips.domain(rips_comp, simp_dict, mapped)
 
 # za K_i
@@ -51,9 +51,9 @@ mapped_tower1 = towers.tower_of_pairs(dom_hom1_filt_basis, hom1_filt_basis, mapp
 
 # eigenspace tower
 eigen_tower0, eigen_tower_basis0 = eigenspaces.eigenspace_tower(inclusion_tower0, mapped_tower0, dom_hom0_filt_basis,
-                                                                max_filt_index, 5, mod)
-eigen_tower1, eigen_tower_basis1 = eigenspaces.eigenspace_tower(inclusion_tower1, mapped_tower1, dom_hom1_filt_basis,
                                                                 max_filt_index, 1, mod)
+eigen_tower1, eigen_tower_basis1 = eigenspaces.eigenspace_tower(inclusion_tower1, mapped_tower1, dom_hom1_filt_basis,
+                                                                max_filt_index, 3, mod)
 eigenspaces.tower_normal_form(eigen_tower0, eigen_tower_basis0, max_filt_index, mod)
 eigenspaces.tower_normal_form(eigen_tower1, eigen_tower_basis1, max_filt_index, mod)
 
@@ -68,5 +68,5 @@ persist_cycles1 = eigenspaces.generators_to_cycles(intervals1, persist_generator
                                                    dom_hom1_basis, dom_index_to_simp, mod)
 
 # plotting
-rips.visualize_circle_polar(points, images, persist_cycles1)
+rips.visualize_circles_polar(points, images, persist_cycles1)
 
