@@ -67,3 +67,6 @@ persist_cycles0 = eigenspaces.generators_to_cycles(intervals0, persist_generator
 persist_cycles1 = eigenspaces.generators_to_cycles(intervals1, persist_generators1, dom_hom1_filt_basis,
                                                    dom_hom1_basis, dom_index_to_simp, mod)
 
+# plotting
+rips.visualize_circle_polar(points, images, persist_cycles1)
+

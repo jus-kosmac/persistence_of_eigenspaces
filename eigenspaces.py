@@ -422,7 +422,7 @@ def generators_to_cycles(intervals, interval_generators, domain_filt_basis, doma
 
     return cycles
 
-
+#TODO: visualize persistence intervals for given eigenvalue
 
 if __name__ == '__main__':
 

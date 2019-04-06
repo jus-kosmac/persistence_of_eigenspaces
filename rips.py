@@ -1,5 +1,7 @@
 import math as m
 import numpy as np
+import matplotlib.pyplot as plt
+import mpl_toolkits.mplot3d as plt3d
 
 def points_circle(r, n, sigma = 0):
     points = []
@@ -123,10 +125,70 @@ def domain(rips, simp_dict, mapped_pts):
         domain_filtration.append((domain_index, simp))
         
     return sorted(domain_filtration, key=lambda x: (x[0], len(x[1]), x[1])), mapped_simp, domain_dict
+
+def visualize_circle_polar(points, images, cycles = False):
+    if cycles is not False: #cycles je seznam ciklov v prvi homologiji
+        for cycle in cycles:
+            for start, end in cycle:
+                r1, fi1 = points[start]
+                r2, fi2 = points[end]
+                plt.plot([r1 * m.cos(fi1), r2 * m.cos(fi2)], [r1 * m.sin(fi1), r2 * m.sin(fi2)], c='g')
+
+    for r, fi in points:
+        plt.scatter(x=r * m.cos(fi), y=r * m.sin(fi), c='b')
+
+    for r, fi in images:
+        plt.scatter(x=r * m.cos(fi), y=r * m.sin(fi), c='r')
+
+    #TODO: popravi razmerje osi
+
+def visualize_torus_polar(points, images, cycles = False):
+    points_x, points_y, points_z = [], [], []
+    images_x, images_y, images_z = [], [], []
+
+    for R, r, fi, theta in points:
+        points_x.append((R + r * m.cos(theta)) * m.cos(fi))
+        points_y.append((R + r * m.cos(theta)) * m.sin(fi))
+        points_z.append(r * m.sin(theta))
+
+    for R, r, fi, theta in images:
+        images_x.append((R + r * m.cos(theta)) * m.cos(fi))
+        images_y.append((R + r * m.cos(theta)) * m.sin(fi))
+        images_z.append(r * m.sin(theta))
+
+    x_min, y_min, z_min = min(points_x + images_x), min(points_y + images_y), min(points_z + images_z)
+    x_max, y_max, z_max = max(points_x + images_x), max(points_y + images_y), max(points_z + images_z)
+
+    lower = min(x_min, y_min, z_min)
+    upper = max(x_max, y_max, z_max)
+
+    fig = plt.figure()
+    ax = plt3d.Axes3D(fig)
+    ax.set_xlim3d(lower, upper)
+    ax.set_ylim3d(lower, upper)
+    ax.set_zlim3d(lower, upper)
+
+    if cycles is not False:
+        for cycle in cycles:
+            for start, end in cycle:
+                ax.plot([points_x[start], points_x[end]], [points_y[start], points_y[end]],
+                        [points_z[start], points_z[end]], c='g')
+
+    ax.scatter(points_x, points_y, points_z, c='b')
+    ax.scatter(images_x, images_y, images_z, c='r')
+
+
+#TODO: dva kroga v ravnini, vsakega lahko po svoje sucemo
+
+
     
 if __name__ == '__main__':
-    points = points_torus_polar(2, 1, 15, 8, 0.1)
+    points = points_torus_polar(4, 1.5, 15, 8, 0.03)
     images = rotate_torus_polar(points, 3, 2)
     mapped = mapped_points(points, images, distance_torus_polar)
     rips, simp_dict, max_index = rips_complex(points, distance_torus_polar)
     domain_filt, mapped_simp, domain_dict = domain(rips, simp_dict, mapped)
+
+    # plotting
+    cycle = {(1, 10): 1, (10, 100): 1, (40, 80): 1}
+    visualize_torus_polar(points, images, [cycle])
