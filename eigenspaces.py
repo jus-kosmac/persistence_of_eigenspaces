@@ -344,14 +344,85 @@ def tower_normal_form(tower, tower_basis, max_filt_index, mod):
                     for k in range(len(right)):
                         right[k][pivot] = (right[k][pivot] + coeff * right[k][j]) % mod
 
-def tower_persistence(tower, tower_basis, max_filt_index, mod):
-    pass
+def tower_persistence(tower, tower_basis, max_filt_index):
+    intervals = [] #zaenkrat podani kot [zacetni indeks, dolzina]
+    interval_generators = [] #bazni element, ki predstavlja interval, dodan ob zacetku intervala
+    active_intervals = dict() #intervali, ki so trenutno zivi
+    #Kljuc: indeks baznega elementa, vrednost: indeks pripadajocega intervala v intervals
+    for ind in range(max_filt_index - 1):
+        M = tower[ind]
+        basis = tower_basis[ind]
+        if M is None:
+            for i in range(len(basis)):
+                if i not in active_intervals: #ta bazni element ni nadaljevanje intervala od prej
+                    intervals.append([ind, 0]) #interval se takoj zakljuci, ker slikamo iz nicelnega ali v nicelni prostor
+                    interval_generators.append(basis[i])
+
+            active_intervals = dict()
+        else:
+            pivot = 0
+            new_active_intervals = dict()
+            for i in range(len(basis)): #stolpci matrike M
+                while pivot < len(M) and M[pivot][i] == 0:
+                    pivot += 1
+
+                if pivot == len(M): #vsi preostali stolpci so nicelni
+                    for j in range(i, len(basis)):
+                        #preostali stolpci zakljucijo obstojec interval ali tvorijo novega trivialnega
+                        if j not in active_intervals:
+                            intervals.append([ind, 0])
+                            interval_generators.append(basis[j])
+
+                    break
+                else:
+                    if i in active_intervals: #podaljsamo interval
+                        position = active_intervals[i]
+                        intervals[position][1] += 1
+                        new_active_intervals[pivot] = position
+                    else: #ustvarimo nov netrivialen interval
+                        position = len(intervals)
+                        intervals.append([ind, 1])
+                        interval_generators.append(basis[i])
+                        new_active_intervals[pivot] = position
+
+            active_intervals = new_active_intervals
+
+    return intervals, interval_generators
+
+def transform_intervals(intervals, max_filt_index):
+    return [(birth, birth + time) if birth + time < max_filt_index - 1 else (birth, None) for birth, time in intervals]
+
+def generators_to_cycles(intervals, interval_generators, domain_filt_basis, domain_basis, domain_index_to_simp, mod):
+    cycles = [] #cikli so shranjeni kot slovarji, KLJUC: simplex, VREDNOST: koeficient pri simplexu v ciklu
+    for i in range(len(intervals)):
+        birth = intervals[i][0]
+        basis = domain_filt_basis[birth] #seznam indeksov elementov v domain_basis, ki tvorijo bazo te filtracije
+        coeffs = interval_generators[i] #koeficienti generatorji po bazi basis
+        cycle = dict()
+
+        for j in range(len(basis)):
+            base_vect = domain_basis[basis[j]] #slovar, KLJUC: indeks simplexa, VREDNOST: koeficient
+            base_coeff = coeffs[j] #lahko je tudi 0
+
+            for simp_ind in base_vect:
+                simp = domain_index_to_simp[simp_ind]
+                value = (base_coeff * base_vect[simp_ind]) % mod
+
+                if simp not in cycle:
+                    if value != 0:
+                        cycle[simp] = value
+                else:
+                    value = (value + cycle[simp]) % mod
+                    if value != 0:
+                        cycle[simp] = value
+                    else:
+                        del cycle[simp]
+
+        cycles.append(cycle)
+
+    return cycles
 
 
-
-#TODO: compute persistence from tower
-#TODO: compute corresponding eigenvectors
-#TODO: visualize (plot) eigenvectors
 
 if __name__ == '__main__':
 
@@ -361,6 +432,6 @@ if __name__ == '__main__':
     U = [[1, 0, 0], [0, 1, 0], [0, 0, 3]]
     V = [[2, 1, 0], [0, 0, 1]]
 
-    tower = [[[4, 2, 3], [4, 1, 3], [5, 6, 10]], [[1, 3, 1], [4, 6, 10]], [[2, 7]]]
-    tower_basis = [[[1], [2], [1]], [[4, 3], [3, 5], [2, 1]], [[1], [6]], [[1, 2, 0, 1, 4]]]
+    tower = [[[4, 2, 3], [4, 1, 3], [5, 6, 10]], [[1, 3, 1], [4, 6, 10], [0, 0, 0]], [[2, 7, 3]]]
+    tower_basis = [[[1], [2], [1]], [[4, 3], [3, 5], [2, 1]], [[1], [6], [10]], [[1, 2, 0, 1, 4]]]
 

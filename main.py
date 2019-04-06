@@ -51,8 +51,19 @@ mapped_tower1 = towers.tower_of_pairs(dom_hom1_filt_basis, hom1_filt_basis, mapp
 
 # eigenspace tower
 eigen_tower0, eigen_tower_basis0 = eigenspaces.eigenspace_tower(inclusion_tower0, mapped_tower0, dom_hom0_filt_basis,
-                                                                max_filt_index, 2, mod)
+                                                                max_filt_index, 5, mod)
 eigen_tower1, eigen_tower_basis1 = eigenspaces.eigenspace_tower(inclusion_tower1, mapped_tower1, dom_hom1_filt_basis,
-                                                                max_filt_index, 3, mod)
+                                                                max_filt_index, 1, mod)
 eigenspaces.tower_normal_form(eigen_tower0, eigen_tower_basis0, max_filt_index, mod)
 eigenspaces.tower_normal_form(eigen_tower1, eigen_tower_basis1, max_filt_index, mod)
+
+# izracunamo vztrajnost
+intervals0, persist_generators0 = eigenspaces.tower_persistence(eigen_tower0, eigen_tower_basis0, max_filt_index)
+intervals1, persist_generators1 = eigenspaces.tower_persistence(eigen_tower1, eigen_tower_basis1, max_filt_index)
+intervals0 = eigenspaces.transform_intervals(intervals0, max_filt_index)
+intervals1 = eigenspaces.transform_intervals(intervals1, max_filt_index)
+persist_cycles0 = eigenspaces.generators_to_cycles(intervals0, persist_generators0, dom_hom0_filt_basis,
+                                                   dom_hom0_basis, dom_index_to_simp, mod)
+persist_cycles1 = eigenspaces.generators_to_cycles(intervals1, persist_generators1, dom_hom1_filt_basis,
+                                                   dom_hom1_basis, dom_index_to_simp, mod)
+
