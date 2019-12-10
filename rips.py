@@ -142,6 +142,7 @@ def rips_complex(points, distance, dim3=False):
             followed by increasing dimension of simplices
     simp_dict -- a dictionary: key = ordered simplex, value = minimal filtration index
     filtration_index -- maximal filtration index
+    epsilon -- a list of values of distances for each filtration index
     """
     n = len(points)
     simplices = []
@@ -170,18 +171,20 @@ def rips_complex(points, distance, dim3=False):
                 
     simplices.sort()
     rips = []
+    epsilon = [0]
     current_dist = 0
-    filtration_index = 1
+    filtration_index = 0
     simp_dict = dict()
     
     for (d, _, simp) in simplices:
         if d > current_dist:
             current_dist = d
             filtration_index += 1
+            epsilon.append(m.sqrt(current_dist))
         rips.append((filtration_index, simp))
         simp_dict[simp] = filtration_index
         
-    return rips, simp_dict, filtration_index
+    return rips, simp_dict, filtration_index, epsilon
 
 
 def mapped_points(points, images, distance):
@@ -361,7 +364,7 @@ if __name__ == '__main__':
     points = points_circles_polar([1, 3, 2], [(-5, 0), (2, 2), (3, 4)], [10, 15, 5], [0.03, 0.1, 0.03])
     images = rotate_circles_polar(points, [2, -1, 3], [10, 15, 5])
     mapped = mapped_points(points, images, distance_circles_polar)
-    rips, simp_dict, max_index = rips_complex(points, distance_circles_polar, True)
+    rips, simp_dict, max_index, epsilon = rips_complex(points, distance_circles_polar, True)
     domain_filt, mapped_simp, domain_dict = domain(rips, simp_dict, mapped)
 
     # Plotting.

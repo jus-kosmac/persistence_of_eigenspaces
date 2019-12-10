@@ -467,7 +467,7 @@ if __name__ == '__main__':
     images = rips.rotate_torus_polar(points, 3, 2)
     mapped = rips.mapped_points(points, images, rips.distance_torus_polar)
     
-    rips_comp, simp_dict, max_filt_index = rips.rips_complex(points, rips.distance_torus_polar)
+    rips_comp, simp_dict, max_filt_index, epsilon = rips.rips_complex(points, rips.distance_torus_polar)
     domain_filt, mapped_simp, domain_dict = rips.domain(rips_comp, simp_dict, mapped)
 
     # For filtration of K_i.
