@@ -223,6 +223,8 @@ def domain(rips, simp_dict, mapped_pts):
     domain_filtration -- a list of pairs (ordered simplex, minimal domain filtration index) sorted by increasing minimal
                          domain filtration index, followed by increasing dimension of simplices
     mapped_simp -- a dictionary: key = ordered simplex, value = (mapped simplex, signature : 1 or -1, collapse : Bool)
+                   signature tells us if we preserve or reverse orientation of the simplex
+                   collapse tells us if the mapped simplex collapses in dimension
     domain_dict -- a dictionary, key = ordered simplex, value = minimal domain filtration index
     """
     mapped_simp = dict()
