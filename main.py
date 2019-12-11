@@ -6,9 +6,9 @@ import eigenspaces
 mod = 29
 
 # Generate the points and their images.
-points = rips.points_circles_polar([2, 2], [(-4, 0), (4, 0)], [40, 40], [0.01, 0.01])
+points = rips.points_circles_polar([2, 2], [(-4, 0), (4, 0)], [30, 40], [0.15, 0.15])
 # points = rips.points_circles_polar([2], [(0, 0)], [80], [0.1])
-images = rips.rotate_circles_polar(points, [2, 3], [40, 40])
+images = rips.rotate_circles_polar(points, [2, 2], [30, 40])
 mapped = rips.mapped_points(points, images, rips.distance_circles_polar)
 
 # Form the filtration of complexes K_i and the domains dom_i.
@@ -53,7 +53,7 @@ mapped_tower1 = towers.tower_of_pairs(dom_hom1_filt_basis, hom1_filt_basis, mapp
 eigen_tower0, eigen_tower_basis0 = eigenspaces.eigenspace_tower(inclusion_tower0, mapped_tower0, dom_hom0_filt_basis,
                                                                 max_filt_index, 1, mod)
 eigen_tower1, eigen_tower_basis1 = eigenspaces.eigenspace_tower(inclusion_tower1, mapped_tower1, dom_hom1_filt_basis,
-                                                                max_filt_index, 3, mod)
+                                                                max_filt_index, 2, mod)
 eigenspaces.tower_normal_form(eigen_tower0, eigen_tower_basis0, max_filt_index, mod)
 eigenspaces.tower_normal_form(eigen_tower1, eigen_tower_basis1, max_filt_index, mod)
 

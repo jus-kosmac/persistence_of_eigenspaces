@@ -314,10 +314,10 @@ def visualize_circles_polar(points, images, cycles=False):
     if cycles is not False:
         for cycle in cycles:
             for start, end in cycle:
-                plt.plot([points_x[start], points_x[end]], [points_y[start], points_y[end]], c='g')
+                plt.plot([points_x[start], points_x[end]], [points_y[start], points_y[end]], c='g', linewidth=2)
 
-    plt.scatter(points_x, points_y, c='b')
-    plt.scatter(images_x, images_y, c='r')
+    plt.scatter(points_x, points_y, c='b', s=12)
+    plt.scatter(images_x, images_y, c='r', s=12)
 
 
 def visualize_torus_polar(points, images, cycles=False):

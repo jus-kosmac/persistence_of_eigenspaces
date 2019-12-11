@@ -1,4 +1,5 @@
 import sympy as sp
+import matplotlib.pyplot as plt
 
 
 def kernel(A, mod):
@@ -555,12 +556,48 @@ def stretched_intervals(intervals, epsilon):
     epsilon -- a list of inreasing threshold values, as in the function rips.rips_complex
 
     Return:
-    intervals which are scaled according to epsilon
+    Intervals which are scaled according to epsilon.
     """
-    final = epsilon[-1]  # The final threshold level.
-    return [(epsilon[i], final) if j is None else (epsilon[i], epsilon[j]) for i, j in intervals]
+    return [(epsilon[i], j) if j is None else (epsilon[i], epsilon[j]) for i, j in intervals]
 
-#TODO: visualize persistence intervals for given eigenvalue
+
+def visualize_barcode(intervals, final_value, set_ticks=False):
+    """Plot the barcode of the persistent intervals. If death = None, it is replaced by final_value and plotted in red.
+    Intervals are as returned by the function stretched_intervals.
+    """
+    inter = intervals.copy()
+    for i, (birth, death) in enumerate(inter):
+        if death is None:
+            inter[i] = (birth, final_value)
+
+    inter.sort(key=lambda x: (x[0], -x[1]))
+
+    for i in range(len(inter)):
+        birth, death = inter[i]
+        if death == final_value:
+            plt.plot(inter[i], (i + 1, i + 1), color='r', linewidth=2)
+        else:
+            plt.plot(inter[i], (i + 1, i + 1), color='b', linewidth=2)
+        plt.scatter(final_value, i + 1, color='r', s=5)
+
+    if set_ticks:
+        plt.yticks(list(range(1, len(inter) + 1)), list(range(1, len(inter) + 1)))
+
+
+def visualize_persistent_diagram(intervals, final_value):
+    """Plot the persistent diagram from the list of intervals. If death = None, it is replaced by final_value and
+    plotted in red.
+    """
+    plt.axes().set_aspect('equal')
+
+    for birth, death in intervals:
+        if death is None:
+            plt.scatter(birth, final_value, color='r', s=10)
+        else:
+            plt.scatter(birth, death, color='b', s=10)
+
+    plt.plot([0, final_value], [0, final_value], linewidth=1, color='black')
+
 
 if __name__ == '__main__':
 
